@@ -1,16 +1,24 @@
 from __future__ import annotations
 
+import platform
 from typing import Any
 
 
 class AccessibilityProvider:
-    """Small, safe macOS Accessibility probe.
+    """Small, safe accessibility probe.
 
-    Full AX tree traversal is intentionally optional because it requires system
-    permissions and pyobjc. The multimodal screenshot remains the primary signal.
+    Full tree traversal is intentionally optional because it requires system
+    permissions and platform-specific libraries. The multimodal screenshot
+    remains the primary signal.
     """
 
     def snapshot(self) -> dict[str, Any] | None:
+        system = platform.system().lower()
+        if system == "windows":
+            return self._windows_snapshot()
+        if system != "darwin":
+            return {"available": False, "reason": f"unsupported platform: {system}"}
+
         try:
             import ApplicationServices as AS
         except Exception:
@@ -42,5 +50,28 @@ class AccessibilityProvider:
                 except Exception:
                     pass
             return result
+        except Exception as exc:
+            return {"available": False, "reason": str(exc)}
+
+    def _windows_snapshot(self) -> dict[str, Any] | None:
+        try:
+            from pywinauto import Desktop
+        except Exception:
+            return {"available": False, "reason": "pywinauto is not installed"}
+
+        try:
+            window = Desktop(backend="uia").active()
+            rect = window.rectangle()
+            return {
+                "available": True,
+                "title": window.window_text() or None,
+                "role": window.friendly_class_name() or None,
+                "rect": {
+                    "left": rect.left,
+                    "top": rect.top,
+                    "right": rect.right,
+                    "bottom": rect.bottom,
+                },
+            }
         except Exception as exc:
             return {"available": False, "reason": str(exc)}

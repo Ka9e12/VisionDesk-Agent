@@ -11,7 +11,8 @@ dependencies = []
 control = [
   "pyautogui>=0.9.54",
   "mss>=9.0.1",
-  "pillow>=10.0.0"
+  "pillow>=10.0.0",
+  "pyperclip>=1.8.2"
 ]
 ocr = [
   "pytesseract>=0.3.10"
@@ -20,7 +21,10 @@ browser = [
   "playwright>=1.44.0"
 ]
 macos = [
-  "pyobjc-framework-ApplicationServices>=10.0"
+  "pyobjc-framework-ApplicationServices>=10.0; sys_platform == 'darwin'"
+]
+windows = [
+  "pywinauto>=0.6.8; sys_platform == 'win32'"
 ]
 dev = [
   "pytest>=8.0.0"
@@ -29,9 +33,11 @@ all = [
   "pyautogui>=0.9.54",
   "mss>=9.0.1",
   "pillow>=10.0.0",
+  "pyperclip>=1.8.2",
   "pytesseract>=0.3.10",
   "playwright>=1.44.0",
-  "pyobjc-framework-ApplicationServices>=10.0",
+  "pyobjc-framework-ApplicationServices>=10.0; sys_platform == 'darwin'",
+  "pywinauto>=0.6.8; sys_platform == 'win32'",
   "pytest>=8.0.0"
 ]
 

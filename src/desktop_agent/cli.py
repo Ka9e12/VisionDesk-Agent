@@ -27,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--yes", action="store_true", help="Approve high-risk confirmations")
     run.add_argument("--ocr", action="store_true", help="Enable optional OCR")
     run.add_argument("--browser-dom", action="store_true", help="Enable optional browser DOM snapshot")
-    run.add_argument("--accessibility", action="store_true", help="Enable optional macOS accessibility probe")
+    run.add_argument("--accessibility", action="store_true", help="Enable optional OS accessibility probe")
 
     perceive = sub.add_parser("perceive", help="Capture one observation")
     perceive.add_argument("--ocr", action="store_true")

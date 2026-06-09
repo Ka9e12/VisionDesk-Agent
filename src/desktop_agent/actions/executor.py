@@ -8,6 +8,22 @@ from typing import Any
 from desktop_agent.schema import Action, ActionResult, ScreenImage
 
 
+WINDOWS_APP_ALIASES = {
+    "edge": "msedge",
+    "microsoft edge": "msedge",
+    "chrome": "chrome",
+    "google chrome": "chrome",
+    "notepad": "notepad",
+    "记事本": "notepad",
+    "explorer": "explorer",
+    "file explorer": "explorer",
+    "文件资源管理器": "explorer",
+    "cmd": "cmd",
+    "command prompt": "cmd",
+    "powershell": "powershell",
+}
+
+
 class ActionExecutor:
     def __init__(self, *, dry_run: bool = False) -> None:
         self.dry_run = dry_run
@@ -177,7 +193,8 @@ class ActionExecutor:
         if system == "darwin":
             subprocess.run(["open", "-a", app], check=True)
         elif system == "windows":
-            subprocess.Popen([app])
+            command = WINDOWS_APP_ALIASES.get(app.strip().lower(), app)
+            subprocess.run(["cmd", "/c", "start", "", command], check=True)
         else:
             subprocess.Popen([app])
         return {"name": app}

@@ -1,69 +1,107 @@
 # VisionDesk Agent
 
+[中文文档](README.zh-CN.md)
+
 > A local multimodal desktop agent that observes your screen, plans with a vision model, and controls keyboard/mouse from natural-language tasks.
 
-VisionDesk Agent 是一个本地 AI 桌面智能体。你给它一句自然语言任务，它会截图观察当前屏幕，调用多模态模型规划下一步，然后模拟鼠标、键盘、快捷键、打开应用和等待等操作，循环执行直到任务完成。
-
-GitHub description 建议使用：
+GitHub description:
 
 ```text
 A local multimodal desktop agent that observes your screen, plans with a vision model, and controls keyboard/mouse from natural-language tasks.
 ```
 
+VisionDesk Agent is a local AI desktop agent. Give it a natural-language task, and it will observe the current screen, call a multimodal model to plan the next step, control the mouse/keyboard, and repeat until the task is complete.
+
 ## Features
 
 - Natural-language task input
 - Multimodal screen understanding
-- Screenshot, active app, window title, mouse position collection
-- Mouse, keyboard, hotkey, scroll, app launch, URL launch actions
-- OpenAI-compatible multimodal model API
+- Screenshot, active app, window title, and mouse position collection
+- Mouse, keyboard, hotkey, scroll, app launch, and URL launch actions
+- OpenAI-compatible multimodal Chat Completions API
 - One-command setup with automatic virtual environment creation
 - Fast JPEG screenshot mode for lower latency
 - JSONL execution logs and screenshot history
-- Optional OCR, browser DOM, and macOS Accessibility probes
+- Optional OCR, browser DOM, macOS Accessibility, and Windows UI Automation probes
 - Direct execution mode by default, without risk confirmation prompts
 
 ## Quick Start
 
-Clone or download this project, then run:
+macOS / Linux:
 
 ```bash
-./agent.sh
+./mac-agent.sh
 ```
 
-The script will automatically:
+macOS double click:
 
-- create `.venv` if it does not exist
-- install all dependencies
+```text
+mac-agent.command
+```
+
+Windows PowerShell:
+
+```powershell
+.\windows-agent.ps1
+```
+
+Windows double click:
+
+```text
+windows-agent.bat
+```
+
+The launcher will automatically:
+
+- create `.venv`
+- install dependencies
 - create `.env` from `.env.example` if needed
 - ask for API base URL, model name, and API key on first run
 - enter interactive task mode
 
-After startup, type a task directly:
+Interactive example:
 
 ```text
-任务> 打开 Safari，搜索 AI Agent 是什么，并总结重点
+Task> Open Safari, search what AI Agent means, and summarize the key points
 ```
 
-## macOS Double Click
-
-On macOS, you can also double-click:
+Windows example:
 
 ```text
-run-agent.command
+Task> Open Edge, search what AI Agent means, and summarize the key points
 ```
 
-If macOS blocks execution, run once in terminal:
+## Common Commands
+
+macOS / Linux:
 
 ```bash
-chmod +x agent.sh run-agent.command
+./mac-agent.sh -help
+./mac-agent.sh doctor
+./mac-agent.sh perceive
+./mac-agent.sh "Open a browser and search what AI agents are"
+./mac-agent.sh run "Search the weather in a browser" --dry-run
+```
+
+Windows:
+
+```powershell
+.\windows-agent.ps1 -help
+.\windows-agent.ps1 doctor
+.\windows-agent.ps1 perceive
+.\windows-agent.ps1 "Open Edge and search what AI agents are"
+.\windows-agent.ps1 run "Search the weather in Edge" --dry-run
+```
+
+If PowerShell blocks script execution:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\windows-agent.ps1
 ```
 
 ## Configuration
 
-Configuration lives in `.env`.
-
-Example:
+Configuration lives in `.env`. This file is ignored by Git. Do not commit real API keys.
 
 ```text
 AGENT_API_BASE=http://your-api-host:9999
@@ -78,90 +116,53 @@ AGENT_SCREENSHOT_FORMAT=jpeg
 AGENT_JPEG_QUALITY=70
 ```
 
-Important:
+To change model settings later, edit:
 
-- `.env` is ignored by Git.
-- Do not commit your real API key.
-- `.env.example` should only contain placeholders or safe defaults.
-
-To change model settings later, edit `.env` and run `./agent.sh` again.
-
-You can also use another env file:
-
-```bash
-./agent.sh --env .env.fast
-./agent.sh --env .env.smart
+```text
+AGENT_API_BASE=
+AGENT_MODEL=
+AGENT_API_KEY=
 ```
 
-## Usage
-
-Interactive mode:
+You can also use multiple env files:
 
 ```bash
-./agent.sh
+./mac-agent.sh --env .env.fast
 ```
 
-Run one task directly:
-
-```bash
-./agent.sh "打开浏览器，搜索 AI 智能体是什么，并总结重点"
-```
-
-Check the local environment:
-
-```bash
-./agent.sh doctor
-```
-
-Capture one observation:
-
-```bash
-./agent.sh perceive
-```
-
-Show help:
-
-```bash
-./agent.sh -help
-```
-
-Use the original CLI:
-
-```bash
-./agent.sh cli run "打开备忘录，写一条测试笔记"
-```
-
-Dry run:
-
-```bash
-./agent.sh run "打开浏览器搜索天气" --dry-run
-```
-
-Enable stronger perception:
-
-```bash
-./agent.sh run "整理当前网页里的表格信息" --ocr --browser-dom --accessibility
+```powershell
+.\windows-agent.ps1 --env .env.fast
 ```
 
 ## Permissions
 
-On macOS, desktop automation usually needs permissions:
+On macOS, grant permissions in:
 
 ```text
 System Settings -> Privacy & Security -> Accessibility
 System Settings -> Privacy & Security -> Screen Recording
 ```
 
-Grant permission to the terminal app, Python, or the app you use to run this project.
+On Windows, normal user permissions are usually enough. If the target app is running as Administrator, run PowerShell or Command Prompt as Administrator too.
 
 ## Browser DOM Mode
 
-For browser DOM snapshots, start Chrome with remote debugging:
+For browser DOM snapshots, start Chrome with remote debugging.
+
+macOS:
 
 ```bash
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
   --remote-debugging-port=9222 \
   --user-data-dir=/tmp/visiondesk-agent-chrome
+```
+
+Windows:
+
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  --remote-debugging-port=9222 `
+  --user-data-dir="$env:TEMP\visiondesk-agent-chrome"
 ```
 
 Then set:
@@ -172,8 +173,6 @@ AGENT_INCLUDE_BROWSER_DOM=true
 ```
 
 ## Speed Tuning
-
-Vision models can be slow because every step may require a screenshot upload and model response.
 
 Default fast mode:
 
@@ -190,7 +189,7 @@ AGENT_SCREENSHOT_MAX_WIDTH=900
 AGENT_JPEG_QUALITY=60
 ```
 
-When running tasks, the CLI prints timing information:
+The CLI prints timing information:
 
 ```text
 [step 1] observe done 0.50s
@@ -207,12 +206,21 @@ src/desktop_agent/
   controller.py           Observe -> Think -> Act loop
   config.py               env and runtime configuration
   schema.py               action, observation, decision data structures
-  perception/             screenshot, window, OCR, DOM, Accessibility
+  perception/             screenshot, window, OCR, DOM, accessibility
   planner/                multimodal model calls and prompts
   actions/                local keyboard/mouse/app executor
   safety/                 optional risk policy
   memory/                 task memory
   runtime/                logs and run directory
+```
+
+Launchers:
+
+```text
+mac-agent.sh              macOS/Linux terminal launcher
+mac-agent.command         macOS double-click launcher
+windows-agent.ps1         Windows PowerShell launcher
+windows-agent.bat         Windows double-click launcher
 ```
 
 ## Development
@@ -237,25 +245,15 @@ Build a clean zip package:
 ```bash
 mkdir -p dist
 zip -r dist/visiondesk-agent.zip \
-  agent.sh run-agent.command README.md pyproject.toml .env.example .gitignore src tests \
+  mac-agent.sh mac-agent.command windows-agent.ps1 windows-agent.bat \
+  README.md README.zh-CN.md pyproject.toml .env.example .gitignore src tests \
   -x '*/__pycache__/*' '*.DS_Store'
 ```
-
-## Notes
-
-VisionDesk Agent is designed as a practical local automation prototype. Reliability depends on:
-
-- the multimodal model's screen understanding and coordinate accuracy
-- desktop permissions
-- target app behavior
-- network latency to the model endpoint
-
-The default configuration executes model-planned actions directly. Use `--dry-run` when testing new workflows.
 
 ## Roadmap
 
 - Element-level coordinate calibration
-- Better macOS Accessibility tree traversal
+- Better accessibility tree traversal on macOS and Windows
 - More precise browser automation through Playwright/CDP
 - Local task templates
 - Long-term memory

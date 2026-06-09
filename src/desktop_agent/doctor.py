@@ -14,6 +14,7 @@ def _has_module(name: str) -> bool:
 
 def doctor(config: AgentConfig) -> list[tuple[str, bool, str]]:
     checks: list[tuple[str, bool, str]] = []
+    system = platform.system().lower()
     checks.append(("python", True, platform.python_version()))
     checks.append(("platform", True, platform.platform()))
     checks.append(("AGENT_MODEL", bool(config.model), config.model or "missing"))
@@ -23,13 +24,16 @@ def doctor(config: AgentConfig) -> list[tuple[str, bool, str]]:
     checks.append(("PIL", _has_module("PIL"), "image sizing/resizing"))
     checks.append(("pytesseract", _has_module("pytesseract"), "optional OCR"))
     checks.append(("playwright", _has_module("playwright"), "optional browser DOM"))
-    checks.append(
-        (
-            "ApplicationServices",
-            _has_module("ApplicationServices"),
-            "optional macOS accessibility",
+    if system == "darwin":
+        checks.append(
+            (
+                "ApplicationServices",
+                _has_module("ApplicationServices"),
+                "optional macOS accessibility",
+            )
         )
-    )
+    elif system == "windows":
+        checks.append(("pywinauto", _has_module("pywinauto"), "optional Windows UI Automation"))
 
     try:
         path = Path.cwd() / ".doctor-screenshot.png"
