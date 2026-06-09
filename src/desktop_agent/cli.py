@@ -28,11 +28,23 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--ocr", action="store_true", help="Enable optional OCR")
     run.add_argument("--browser-dom", action="store_true", help="Enable optional browser DOM snapshot")
     run.add_argument("--accessibility", action="store_true", help="Enable optional OS accessibility probe")
+    run.add_argument(
+        "--screenshot-max-width",
+        type=int,
+        default=None,
+        help="Resize screenshots to this width before sending to the model; 0 keeps full resolution",
+    )
 
     perceive = sub.add_parser("perceive", help="Capture one observation")
     perceive.add_argument("--ocr", action="store_true")
     perceive.add_argument("--browser-dom", action="store_true")
     perceive.add_argument("--accessibility", action="store_true")
+    perceive.add_argument(
+        "--screenshot-max-width",
+        type=int,
+        default=None,
+        help="Resize screenshots to this width; 0 keeps full resolution",
+    )
 
     sub.add_parser("doctor", help="Check local environment")
     return parser
@@ -52,6 +64,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "perceive":
         config = config.with_overrides(
+            screenshot_max_width=args.screenshot_max_width,
             include_ocr=args.ocr or None,
             include_browser_dom=args.browser_dom or None,
             include_accessibility=args.accessibility or None,
@@ -69,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             max_steps=args.max_steps,
             dry_run=True if args.dry_run else None,
             assume_yes=True if args.yes else None,
+            screenshot_max_width=args.screenshot_max_width,
             include_ocr=True if args.ocr else None,
             include_browser_dom=True if args.browser_dom else None,
             include_accessibility=True if args.accessibility else None,

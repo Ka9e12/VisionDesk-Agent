@@ -36,11 +36,36 @@ def doctor(config: AgentConfig) -> list[tuple[str, bool, str]]:
         checks.append(("pywinauto", _has_module("pywinauto"), "optional Windows UI Automation"))
 
     try:
-        path = Path.cwd() / ".doctor-screenshot.png"
+        import pyautogui
+
+        size = pyautogui.size()
+        checks.append(("display_size", True, f"{int(size.width)}x{int(size.height)}"))
+    except Exception as exc:
+        checks.append(("display_size", False, str(exc)))
+
+    path = Path.cwd() / ".doctor-screenshot.png"
+    screen = None
+    try:
         screen = ScreenshotProvider(max_width=800).capture(path)
-        path.unlink(missing_ok=True)
-        screen.path.unlink(missing_ok=True)
-        checks.append(("screenshot", True, "ok"))
+        detail = screen.to_diagnostic_dict()
+        checks.append(
+            (
+                "screenshot",
+                True,
+                (
+                    f"{detail['width']}x{detail['height']} from "
+                    f"{detail['original_width']}x{detail['original_height']}; "
+                    f"desktop={detail['desktop_width']}x{detail['desktop_height']}; "
+                    f"origin=({detail['origin_x']},{detail['origin_y']}); "
+                    f"scale=({detail['scale_x']:.3f},{detail['scale_y']:.3f}); "
+                    f"source={detail['capture_source'] or 'unknown'}"
+                ),
+            )
+        )
     except Exception as exc:
         checks.append(("screenshot", False, str(exc)))
+    finally:
+        path.unlink(missing_ok=True)
+        if screen is not None:
+            screen.path.unlink(missing_ok=True)
     return checks

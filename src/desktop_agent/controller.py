@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 
@@ -11,6 +12,7 @@ from desktop_agent.planner.openai_compatible import OpenAICompatiblePlanner, Pla
 from desktop_agent.runtime.logger import RunLogger
 from desktop_agent.safety.confirmation import Confirmation
 from desktop_agent.safety.policy import RiskPolicy
+from desktop_agent.schema import Action
 
 
 @dataclass
@@ -79,6 +81,21 @@ class AgentController:
                 decision.actions.append(
                     self._wait_action("planner returned no actions; observe again")
                 )
+
+            guard_message = self._wechat_send_guard_message(
+                task, decision.actions, decision.thought
+            )
+            if guard_message:
+                self.memory.add_note(guard_message)
+                self.logger.log(
+                    "guardrail_blocked",
+                    {"reason": guard_message, "decision": decision.to_dict()},
+                )
+                decision.actions = [
+                    self._wait_action(
+                        "wechat send blocked until target result selection and strict target confirmation are present"
+                    )
+                ]
 
             for action in decision.actions:
                 if self.config.require_confirmation:
@@ -149,6 +166,123 @@ class AgentController:
         return RunResult(False, message, str(self.logger.run_dir))
 
     def _wait_action(self, reason: str):
-        from desktop_agent.schema import Action
-
         return Action(type="wait", params={"seconds": 1}, reason=reason)
+
+    def _wechat_send_guard_message(
+        self, task: str, actions: list[Action], thought: str = ""
+    ) -> str | None:
+        if not self._is_wechat_message_task(task):
+            return None
+        if not self._contains_enter_send(actions):
+            return None
+
+        target = self._wechat_target_from_task(task)
+        if not target:
+            return (
+                "已阻止微信发送：无法从任务中可靠识别目标联系人或群聊。"
+                "请重新观察或询问用户后再发送。"
+            )
+        if self._has_selected_wechat_target(target):
+            if self._has_strict_wechat_target_confirmation(target, thought, actions):
+                return None
+            return (
+                f"已阻止微信发送：虽然本轮任务已经点击过“{target}”的搜索结果，"
+                "但发送前的判断没有明确写出已严格确认当前会话标题/对象就是该目标。"
+                "请重新观察并确认后再发送。"
+            )
+
+        return (
+            f"已阻止微信发送：按 Enter 发送前，本轮任务必须先搜索并点击"
+            f"与“{target}”匹配的搜索结果，然后重新观察并严格确认当前会话目标。"
+        )
+
+    def _is_wechat_message_task(self, task: str) -> bool:
+        return (
+            ("微信" in task or "WeChat" in task or "weixin" in task.lower())
+            and any(word in task for word in ["发送", "发消息", "说", "发给"])
+        )
+
+    def _contains_enter_send(self, actions: list[Action]) -> bool:
+        for action in actions:
+            if action.type != "press":
+                continue
+            key = str(action.params.get("key", "")).strip().lower()
+            if key in {"enter", "return"}:
+                return True
+        return False
+
+    def _wechat_target_from_task(self, task: str) -> str | None:
+        patterns = [
+            r"(?:微信|WeChat|weixin).*?(?:给|向)\s*(?:联系人|好友|群聊|群)?\s*[“\"']?(.+?)[”\"']?\s*(?:发送|发消息|说|发给|发|[:：，,。]|$)",
+            r"(?:微信|WeChat|weixin).*?(?:群聊|群)\s*[“\"']?(.+?)[”\"']?\s*(?:发送|发消息|说|发给|发|[:：，,。]|$)",
+            r"(?:微信|WeChat|weixin).*?(?:发送消息|发消息|发送)\s*(?:给|到|至)\s*(?:联系人|好友|群聊|群)?\s*[“\"']?(.+?)[”\"']?\s*(?:发送|发消息|说|发给|发|[:：，,。]|$)",
+            r"(?:微信|WeChat|weixin).*?发给\s*(?:联系人|好友|群聊|群)?\s*[“\"']?(.+?)[”\"']?\s*(?:发送|发消息|说|发给|发|[:：，,。]|$)",
+            r"(?:给|向)\s*(?:联系人|好友|群聊|群)?\s*[“\"']?(.+?)[”\"']?\s*(?:发送|发消息|说|发给|发|[:：，,。]|$)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, task, flags=re.IGNORECASE)
+            if match:
+                target = match.group(1).strip(" ：:，,。.！!？?“”\"'《》")
+                target = re.sub(r"^(?:联系人|好友|群聊|群)\s*", "", target)
+                if target:
+                    return target
+        return None
+
+    def _has_strict_wechat_target_confirmation(
+        self, target: str, thought: str, actions: list[Action]
+    ) -> bool:
+        text = "\n".join([thought, *[action.reason for action in actions]])
+        if target not in text:
+            return False
+        unsafe_terms = [
+            "看起来",
+            "可能",
+            "似乎",
+            "像是",
+            "不确定",
+            "未确认",
+            "无法确认",
+            "不能确认",
+            "不清楚",
+        ]
+        if any(term in text for term in unsafe_terms):
+            return False
+        confirmation_terms = [
+            "严格确认",
+            "确认当前会话",
+            "确认当前对话",
+            "确认当前对话框",
+            "确认目标联系人正确",
+            "确认目标群聊正确",
+            "会话标题",
+            "聊天对象",
+            "群聊名称",
+            "标题显示",
+            "标题可见",
+            "当前会话对象",
+            "当前对话框就是",
+        ]
+        return any(term in text for term in confirmation_terms)
+
+    def _has_selected_wechat_target(self, target: str | None) -> bool:
+        if not self.memory:
+            return False
+        target = (target or "").strip()
+        for result in self.memory.action_results:
+            action = result.get("action", {})
+            if not result.get("success"):
+                continue
+            if action.get("type") not in {"click", "double_click"}:
+                continue
+            text = (
+                f"{action.get('reason', '')}\n"
+                f"{action.get('params', {})}\n"
+                f"{result.get('message', '')}\n"
+                f"{result.get('data', {})}"
+            )
+            if "搜索结果" not in text and "匹配" not in text:
+                continue
+            if target and target not in text:
+                continue
+            return True
+        return False

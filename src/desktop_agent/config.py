@@ -53,6 +53,8 @@ class AgentConfig:
     request_timeout: int = 120
     log_dir: Path = Path("logs")
     screenshot_max_width: int = 1100
+    window_screenshot_max_width: int = 1600
+    capture_active_window: bool = True
     screenshot_format: str = "jpeg"
     jpeg_quality: int = 70
     include_ocr: bool = False
@@ -75,6 +77,12 @@ class AgentConfig:
             request_timeout=_as_int(os.getenv("AGENT_REQUEST_TIMEOUT"), 120),
             log_dir=Path(os.getenv("AGENT_LOG_DIR", "logs")),
             screenshot_max_width=_as_int(os.getenv("AGENT_SCREENSHOT_MAX_WIDTH"), 1100),
+            window_screenshot_max_width=_as_int(
+                os.getenv("AGENT_WINDOW_SCREENSHOT_MAX_WIDTH"), 1600
+            ),
+            capture_active_window=_as_bool(
+                os.getenv("AGENT_CAPTURE_ACTIVE_WINDOW"), True
+            ),
             screenshot_format=os.getenv("AGENT_SCREENSHOT_FORMAT", "jpeg"),
             jpeg_quality=_as_int(os.getenv("AGENT_JPEG_QUALITY"), 70),
             include_ocr=_as_bool(os.getenv("AGENT_INCLUDE_OCR"), False),
@@ -90,6 +98,7 @@ class AgentConfig:
         max_steps: int | None = None,
         dry_run: bool | None = None,
         assume_yes: bool | None = None,
+        screenshot_max_width: int | None = None,
         include_ocr: bool | None = None,
         include_browser_dom: bool | None = None,
         include_accessibility: bool | None = None,
@@ -105,7 +114,11 @@ class AgentConfig:
             temperature=self.temperature,
             request_timeout=self.request_timeout,
             log_dir=self.log_dir,
-            screenshot_max_width=self.screenshot_max_width,
+            screenshot_max_width=screenshot_max_width
+            if screenshot_max_width is not None
+            else self.screenshot_max_width,
+            window_screenshot_max_width=self.window_screenshot_max_width,
+            capture_active_window=self.capture_active_window,
             screenshot_format=self.screenshot_format,
             jpeg_quality=self.jpeg_quality,
             include_ocr=include_ocr if include_ocr is not None else self.include_ocr,
