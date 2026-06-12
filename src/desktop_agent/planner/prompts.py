@@ -30,7 +30,7 @@ SYSTEM_PROMPT = """
 - right_click: {"x": int, "y": int}
 - drag_to: {"x": int, "y": int, "duration": float?}
 - scroll: {"clicks": int}，负数向下，正数向上
-- type_text: {"text": string, "paste": true?}
+- type_text: {"text": string, "paste": boolean}  // 默认 true（通过剪贴板粘贴）；中文/多字节字符必须 paste=true；仅当纯英文/数字且需模拟逐字输入时用 false
 - press: {"key": string, "presses": int?}
 - hotkey: {"keys": [string, ...]}，macOS 常用 command，Windows/Linux 常用 ctrl
 - key_down: {"key": string}

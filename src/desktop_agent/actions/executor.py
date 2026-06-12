@@ -190,6 +190,8 @@ class ActionExecutor:
     ) -> dict[str, Any]:
         text = str(params.get("text", ""))
         paste = bool(params.get("paste", True))
+        if not paste and not text.isascii():
+            paste = True
         if paste:
             self._paste_text(text)
         else:
@@ -210,6 +212,7 @@ class ActionExecutor:
                 "Non-macOS paste requires pyperclip or paste=false ASCII typing"
             ) from exc
         pyperclip.copy(text)
+        time.sleep(0.1)
         self._pg().hotkey("ctrl", "v")
 
     def _do_press(
